@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expense &amp; Budget Visualizer</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <div class="header-row">
+      <div>
+        <h1>💸 Expense Visualizer</h1>
+        <p>Lacak pengeluaran harian Anda</p>
+      </div>
+      <button class="theme-toggle" id="themeToggle" title="Toggle tema" onclick="toggleTheme()">🌙</button>
+    </div>
+  </header>
+
+  <!-- Balance -->
+  <div class="card balance-card">
+    <div class="balance-label">Total Pengeluaran</div>
+    <div class="balance-amount" id="totalAmount"><span>Rp</span>0</div>
+    <div class="balance-sub" id="txCount">0 transaksi</div>
+    <!-- Spending limit bar -->
+    <div class="limit-bar-wrap" id="limitBarWrap" style="display:none;">
+      <div class="limit-bar-track">
+        <div class="limit-bar-fill" id="limitBarFill"></div>
+      </div>
+      <div class="limit-bar-label" id="limitBarLabel"></div>
+    </div>
+  </div>
+
+  <!-- Stats per category (dynamic) -->
+  <div class="stats-row" id="statsRow"></div>
+
+  <!-- Tab Nav -->
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="transactions" onclick="switchTab('transactions')">📋 Transaksi</button>
+    <button class="tab-btn" data-tab="summary" onclick="switchTab('summary')">📅 Ringkasan</button>
+    <button class="tab-btn" data-tab="chart" onclick="switchTab('chart')">📊 Grafik</button>
+  </div>
+
+  <!-- ── TAB: Transactions ── -->
+  <div class="tab-panel" id="tab-transactions">
+
+    <!-- Input Form -->
+    <div class="card">
+      <div class="card-title">➕ Tambah Transaksi</div>
+      <div class="form-grid">
+        <div>
+          <label for="itemName">Nama Item</label>
+          <input type="text" id="itemName" placeholder="Contoh: Makan siang, Ojek..." maxlength="60" />
+        </div>
+        <div>
+          <label for="itemAmount">Jumlah (Rp)</label>
+          <input type="number" id="itemAmount" placeholder="Contoh: 25000" min="1" />
+        </div>
+        <div>
+          <label>Kategori</label>
+          <div class="category-row" id="categoryRow"></div>
+          <input type="hidden" id="itemCategory" value="" />
+        </div>
+        <div class="error-msg" id="errorMsg"></div>
+        <button class="btn-add" onclick="addTransaction()">Tambah Transaksi</button>
+      </div>
+    </div>
+
+    <!-- Manage Custom Categories -->
+    <div class="card">
+      <div class="card-title-row">
+        <span class="card-title">🏷️ Kelola Kategori</span>
+        <button class="btn-toggle-section" onclick="toggleSection('catManager')">＋</button>
+      </div>
+      <div id="catManager" style="display:none;">
+        <div class="form-grid" style="margin-top:12px;">
+          <div class="cat-add-row">
+            <input type="text" id="newCatName" placeholder="Nama kategori" maxlength="20" />
+            <input type="text" id="newCatIcon" placeholder="Ikon" maxlength="4" style="width:70px;text-align:center;" />
+            <input type="color" id="newCatColor" value="#a855f7" style="width:48px;height:42px;padding:4px;cursor:pointer;" />
+            <button class="btn-cat-add" onclick="addCustomCategory()">Tambah</button>
+          </div>
+          <div id="customCatList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Spending Limit -->
+    <div class="card">
+      <div class="card-title-row">
+        <span class="card-title">⚠️ Batas Pengeluaran</span>
+        <button class="btn-toggle-section" onclick="toggleSection('limitManager')">＋</button>
+      </div>
+      <div id="limitManager" style="display:none; margin-top:12px;">
+        <div class="cat-add-row">
+          <input type="number" id="spendingLimit" placeholder="Contoh: 500000" min="1" />
+          <button class="btn-cat-add" onclick="saveLimit()">Simpan</button>
+          <button class="btn-del-inline" onclick="clearLimit()">Hapus</button>
+        </div>
+        <p class="limit-hint" id="limitHint"></p>
+      </div>
+    </div>
+
+    <!-- Sort + Transaction List -->
+    <div class="card">
+      <div class="card-title-row">
+        <span class="card-title">📋 Riwayat Transaksi</span>
+        <select id="sortSelect" onchange="render()" style="font-size:.75rem;padding:4px 8px;width:auto;">
+          <option value="date-desc">Terbaru</option>
+          <option value="date-asc">Terlama</option>
+          <option value="amount-desc">Terbesar</option>
+          <option value="amount-asc">Terkecil</option>
+          <option value="category">Kategori</option>
+        </select>
+      </div>
+      <div class="tx-list" id="txList">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">🧾</div>
+          <p>Belum ada transaksi.<br>Tambahkan pengeluaran pertama Anda!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: Monthly Summary ── -->
+  <div class="tab-panel" id="tab-summary" style="display:none;">
+    <div class="card">
+      <div class="card-title-row">
+        <span class="card-title">📅 Ringkasan Bulanan</span>
+        <select id="monthSelect" onchange="renderSummary()"></select>
+      </div>
+      <div id="summaryContent"></div>
+    </div>
+  </div>
+
+  <!-- ── TAB: Chart ── -->
+  <div class="tab-panel" id="tab-chart" style="display:none;">
+    <div class="card">
+      <div class="card-title">📊 Distribusi Pengeluaran</div>
+      <div id="chartContainer">
+        <div class="no-chart" id="noChart">
+          <div class="no-chart-icon">📈</div>
+          <p>Tambahkan transaksi untuk melihat grafik</p>
+        </div>
+        <div id="chartArea" style="display:none;">
+          <div class="chart-wrap">
+            <canvas id="expenseChart"></canvas>
+            <div class="chart-center-label">
+              <div class="cl-val" id="chartCenterVal">Rp0</div>
+              <div class="cl-lbl">Total</div>
+            </div>
+          </div>
+          <div class="chart-legend" id="chartLegend"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Expense &amp; Budget Visualizer &copy; 2026</footer>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
